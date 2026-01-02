@@ -1,0 +1,63 @@
+/* Culturata Brand Suitability - Admin Styles */
+
+.culturata-bs-score-display {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.culturata-bs-dashboard .culturata-bs-stats {
+    margin-bottom: 20px;
+}
+
+.culturata-bulk-analysis {
+    max-width: 800px;
+}
+
+.culturata-bs-score-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.culturata-bs-score-badge.grade-a {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.culturata-bs-score-badge.grade-b {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.culturata-bs-score-badge.grade-c {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.culturata-bs-score-badge.grade-d {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+.culturata-bs-score-badge.grade-f {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Settings page styling */
+.culturata-bs-settings-page {
+    max-width: 800px;
+}
+
+.culturata-bs-settings-page .notice.inline {
+    margin: 10px 0;
+    padding: 10px;
+}
+
+/* Dashboard widget */
+#culturata_bs_dashboard_widget .inside {
+    margin: 0;
+    padding: 12px;
+}
