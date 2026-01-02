@@ -1,0 +1,42 @@
+/* Culturata Brand Suitability - Gutenberg Editor Styles */
+
+.culturata-brand-suitability-panel {
+    padding: 16px;
+}
+
+.culturata-bs-score-display {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.culturata-bs-risk-flag {
+    padding: 8px;
+    margin-bottom: 8px;
+    background: #f9fafb;
+    border-left: 3px solid #999;
+    border-radius: 2px;
+    font-size: 13px;
+}
+
+.culturata-bs-risk-flag.severity-low {
+    border-left-color: #3b82f6;
+}
+
+.culturata-bs-risk-flag.severity-medium {
+    border-left-color: #f59e0b;
+}
+
+.culturata-bs-risk-flag.severity-high {
+    border-left-color: #ef4444;
+}
+
+.culturata-bs-category-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    margin: 2px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
