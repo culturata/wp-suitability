@@ -36,6 +36,20 @@ Provide your analysis in the following JSON structure:
 {
   "overallScore": <number 0-100, where 100 is completely safe>,
   "garmRiskLevel": <"floor" | "low" | "medium" | "high">,
+  "garmCategories": {
+    "adultContent": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "armsAmmunition": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "crimeHarmfulActs": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "deathInjuryConflict": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "onlinePiracy": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "hateSpeech": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "obscenityProfanity": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "drugsAlcoholTobacco": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "spamHarmful": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "terrorism": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "debatedSocialIssues": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"},
+    "militaryConflict": {"detected": <boolean>, "confidence": <0-1>, "details": "<explanation if detected>"}
+  },
   "iabCategories": [
     {
       "id": "<IAB category ID like IAB1>",
@@ -65,8 +79,32 @@ Provide your analysis in the following JSON structure:
       "reason": "<why this is flagged>"
     }
   ],
+  "recommendations": [
+    {
+      "issue": "<specific issue found>",
+      "location": "<paragraph/section where issue is>",
+      "original": "<exact problematic text>",
+      "suggested": "<suggested replacement text>",
+      "priority": <"low" | "medium" | "high">,
+      "reasoning": "<why this change improves brand suitability>"
+    }
+  ],
   "reasoning": "<brief explanation of the score>"
 }
+
+GARM 12 Risk Categories:
+1. Adult & Explicit Sexual Content - Sexually explicit material, nudity, pornography
+2. Arms & Ammunition - Weapons, firearms, ammunition sales or promotion
+3. Crime & Harmful Acts - Criminal activity, violence, harmful behaviors
+4. Death, Injury, or Military Conflict - Graphic injuries, death, war coverage
+5. Online Piracy - Copyright infringement, illegal downloads, counterfeits
+6. Hate Speech & Acts of Aggression - Discrimination, bigotry, hate groups
+7. Obscenity & Profanity - Excessive profanity, vulgar language
+8. Illegal Drugs/Tobacco/e-Cigarettes/Vaping/Alcohol - Drug use, smoking, alcohol promotion
+9. Spam or Harmful Content - Malware, phishing, misleading content
+10. Terrorism - Terrorist organizations, extremism, radicalization
+11. Debated Sensitive Social Issues - Abortion, immigration, controversial politics
+12. Military Conflict - War zones, military operations, armed conflict
 
 GARM Risk Level Guidelines:
 - floor: No risk, completely brand safe
@@ -77,12 +115,14 @@ GARM Risk Level Guidelines:
 IAB Categories (use standard IAB Content Taxonomy v3.0):
 Common examples: IAB1 (Arts & Entertainment), IAB3 (Business), IAB5 (Education), IAB7 (Health & Fitness), IAB11 (Law, Government & Politics), IAB12 (News), IAB14 (Society), IAB17 (Sports), IAB19 (Technology & Computing)
 
+IMPORTANT: Provide 3-5 actionable recommendations with specific text replacements where content could be improved for brand safety. Be specific about the location and exact text to change.
+
 Be thorough but conservative in your assessment. When in doubt, flag potential risks.`;
 
   try {
     const response = await client.messages.create({
       model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 2000,
+      max_tokens: 4000, // Increased for recommendations
       temperature: 0.3,
       messages: [
         {
@@ -117,11 +157,13 @@ Be thorough but conservative in your assessment. When in doubt, flag potential r
       contentHash,
       overallScore: analysisResult.overallScore,
       garmRiskLevel: analysisResult.garmRiskLevel,
+      garmCategories: analysisResult.garmCategories || {},
       iabCategories: analysisResult.iabCategories || [],
       sentimentScore: analysisResult.sentimentScore,
       toxicityFlags: analysisResult.toxicityFlags,
       riskFlags: analysisResult.riskFlags || [],
       flaggedEntities: analysisResult.flaggedEntities || [],
+      recommendations: analysisResult.recommendations || [],
       reasoning: analysisResult.reasoning,
       processingTimeMs: processingTime,
       modelVersion: 'claude-3-5-sonnet-20241022',

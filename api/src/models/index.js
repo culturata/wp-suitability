@@ -1,10 +1,17 @@
 const sequelize = require('../config/database');
 const User = require('./User');
 const Analysis = require('./Analysis');
+const RecommendationTracking = require('./RecommendationTracking');
 
 // Define associations
 User.hasMany(Analysis, { foreignKey: 'userId', as: 'analyses' });
 Analysis.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(RecommendationTracking, { foreignKey: 'userId', as: 'recommendationTracking' });
+RecommendationTracking.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Analysis.hasMany(RecommendationTracking, { foreignKey: 'analysisId', as: 'recommendationTracking' });
+RecommendationTracking.belongsTo(Analysis, { foreignKey: 'analysisId', as: 'analysis' });
 
 const syncDatabase = async () => {
   try {
@@ -24,5 +31,6 @@ module.exports = {
   sequelize,
   User,
   Analysis,
+  RecommendationTracking,
   syncDatabase
 };

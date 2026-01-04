@@ -4,23 +4,37 @@ A comprehensive brand suitability analysis platform for WordPress publishers, po
 
 ## 🎯 Overview
 
-This platform helps publishers and advertisers assess content brand safety before it enters the programmatic advertising pipeline. It combines a powerful Node.js/Express API with a seamless WordPress plugin integration.
+This platform helps publishers and advertisers assess content brand safety before it enters the programmatic advertising pipeline. It combines a powerful Node.js/Express API with a seamless WordPress plugin integration, featuring dual analysis methods (keyword + AI), actionable recommendations, and tier-based feature access.
 
 ### Key Components
 
-1. **API Service** (`/api`) - Node.js/Express backend with Claude AI integration
-2. **WordPress Plugin** (`/plugin`) - Gutenberg-integrated content analysis tool
+1. **API Service** (`/api`) - Node.js/Express backend with Claude AI integration and keyword screening
+2. **WordPress Plugin** (`/plugin`) - Gutenberg-integrated content analysis tool with one-click fixes
 
 ## 🌟 Features
 
 ### Content Analysis
 
+- **Dual Analysis Methods**: Hybrid keyword screening + AI analysis for optimal speed and accuracy
+- **12 GARM Risk Categories**: Comprehensive assessment across all Global Alliance for Responsible Media categories:
+  1. Adult & Explicit Sexual Content
+  2. Arms & Ammunition
+  3. Crime & Harmful Acts
+  4. Death, Injury, or Military Conflict
+  5. Online Piracy
+  6. Hate Speech & Acts of Aggression
+  7. Obscenity & Profanity
+  8. Illegal Drugs/Tobacco/e-Cigarettes/Vaping/Alcohol
+  9. Spam or Harmful Content
+  10. Terrorism
+  11. Debated Sensitive Social Issues
+  12. Military Conflict
 - **AI-Powered Scoring**: Claude 3.5 Sonnet analyzes content with structured JSON outputs
-- **GARM Compliance**: Risk assessment following Global Alliance for Responsible Media standards
 - **IAB Categorization**: Automatic content classification using IAB Content Taxonomy v3.0
 - **Sentiment Analysis**: Positive/negative/neutral tone detection
-- **Toxicity Detection**: Identifies hate speech, violence, adult content, profanity
 - **Entity Recognition**: Flags potentially problematic people, organizations, and events
+- **Actionable Recommendations**: 3-5 specific suggestions with original → suggested text replacements
+- **One-Click Fixes**: Apply recommendations directly in Gutenberg editor
 
 ### WordPress Integration
 
@@ -33,10 +47,14 @@ This platform helps publishers and advertisers assess content brand safety befor
 ### Developer Features
 
 - **Clerk Authentication**: Secure user management tied to Culturata accounts
-- **Freemium Tiers**: 10/1,000/10,000 analyses per month (Free/Pro/Enterprise)
+- **Tier-Based Feature Gating**: Different analysis methods and features by subscription level
+  - **Free**: Keyword analysis only (AI for flagged content), 10 analyses/month
+  - **Pro**: Full AI + keyword hybrid analysis, recommendations, 1,000 analyses/month
+  - **Enterprise**: All features + bulk analysis + API access, 10,000+ analyses/month
 - **Redis Caching**: 24-hour result caching for identical content
 - **Rate Limiting**: Tier-based monthly quotas with automatic resets
 - **PostgreSQL Database**: Robust data persistence and querying
+- **Recommendation Tracking**: Database-backed tracking of implementations and feedback
 
 ## 📋 Prerequisites
 
@@ -198,11 +216,11 @@ Configure in **Brand Suitability → Settings**:
 
 ## 💰 Pricing Tiers
 
-| Tier | Analyses/Month | Price | Best For |
-|------|----------------|-------|----------|
-| **Free** | 10 | $0 | Testing & small blogs |
-| **Pro** | 1,000 | $99/mo | Regular publishers |
-| **Enterprise** | 10,000+ | Custom | Large publishers & agencies |
+| Tier | Analyses/Month | Analysis Method | Recommendations | Price | Best For |
+|------|----------------|----------------|-----------------|-------|----------|
+| **Free** | 10 | Keyword (AI for flagged) | ❌ No | $0 | Testing & small blogs |
+| **Pro** | 1,000 | Hybrid (Keyword + AI) | ✅ Yes | $99/mo | Regular publishers |
+| **Enterprise** | 10,000+ | Full AI + Bulk | ✅ Yes + Tracking | Custom | Large publishers & agencies |
 
 ## 📊 Scoring System
 
@@ -227,10 +245,25 @@ Configure in **Brand Suitability → Settings**:
 {
   "overallScore": 85.5,
   "garmRiskLevel": "low",
+  "analysisMethod": "hybrid",
   "scoreSummary": {
     "grade": "B",
     "label": "Good",
     "color": "blue"
+  },
+  "garmCategories": {
+    "adultContent": {"detected": false, "confidence": 0.02},
+    "armsAmmunition": {"detected": false, "confidence": 0.01},
+    "crimeHarmfulActs": {"detected": false, "confidence": 0.03},
+    "deathInjuryConflict": {"detected": false, "confidence": 0.05},
+    "onlinePiracy": {"detected": false, "confidence": 0.0},
+    "hateSpeech": {"detected": false, "confidence": 0.01},
+    "obscenityProfanity": {"detected": false, "confidence": 0.08},
+    "drugsAlcoholTobacco": {"detected": false, "confidence": 0.02},
+    "spamHarmful": {"detected": false, "confidence": 0.01},
+    "terrorism": {"detected": false, "confidence": 0.0},
+    "debatedSocialIssues": {"detected": true, "confidence": 0.45, "details": "Political content detected"},
+    "militaryConflict": {"detected": false, "confidence": 0.03}
   },
   "iabCategories": [
     {"id": "IAB3", "name": "Business", "confidence": 0.92}
@@ -241,10 +274,20 @@ Configure in **Brand Suitability → Settings**:
     "violence": false,
     "adultContent": false,
     "profanity": false,
-    "controversial": false
+    "controversial": true
   },
   "riskFlags": [],
-  "reasoning": "Professional business content appropriate for most brands..."
+  "recommendations": [
+    {
+      "issue": "Political language may not be suitable for all brands",
+      "location": "Paragraph 2",
+      "original": "the controversial new policy",
+      "suggested": "the recently announced policy",
+      "priority": "medium",
+      "reasoning": "Removing political connotation makes content more brand-safe"
+    }
+  ],
+  "reasoning": "Professional business content with minor political references..."
 }
 ```
 
@@ -254,31 +297,43 @@ Configure in **Brand Suitability → Settings**:
 
 ```
 wp-suitability/
-├── api/                          # Node.js/Express API
+├── api/                                      # Node.js/Express API
 │   ├── src/
-│   │   ├── config/              # Database & Redis config
-│   │   ├── models/              # Sequelize models
-│   │   ├── services/            # Claude integration
-│   │   ├── middleware/          # Auth & rate limiting
-│   │   ├── routes/              # API endpoints
-│   │   └── server.js            # Express app
+│   │   ├── config/                          # Database & Redis config
+│   │   ├── models/                          # Sequelize models
+│   │   │   ├── User.js                      # User accounts and tiers
+│   │   │   ├── Analysis.js                  # Analysis results
+│   │   │   └── RecommendationTracking.js    # Recommendation implementations
+│   │   ├── services/
+│   │   │   ├── claudeAnalyzer.js            # AI analysis with recommendations
+│   │   │   └── keywordScreener.js           # Fast keyword-based pre-screening
+│   │   ├── middleware/
+│   │   │   ├── auth.js                      # Clerk & API key auth
+│   │   │   └── rateLimiter.js               # Tier-based rate limiting
+│   │   ├── routes/
+│   │   │   ├── analysis.js                  # Analysis endpoints
+│   │   │   ├── user.js                      # User management
+│   │   │   └── recommendations.js           # Recommendation tracking
+│   │   └── server.js                        # Express app
 │   ├── package.json
 │   └── README.md
 │
-├── plugin/                       # WordPress plugin
+├── plugin/                                   # WordPress plugin
 │   ├── includes/
-│   │   ├── class-api-client.php # API communication
-│   │   ├── class-post-meta.php  # Meta data management
-│   │   ├── class-admin.php      # Settings & meta boxes
-│   │   ├── class-gutenberg.php  # Block editor integration
-│   │   └── class-dashboard.php  # Dashboard widgets
+│   │   ├── class-api-client.php             # API communication
+│   │   ├── class-post-meta.php              # Meta data management
+│   │   ├── class-admin.php                  # Settings & meta boxes
+│   │   ├── class-gutenberg.php              # Block editor integration
+│   │   └── class-dashboard.php              # Dashboard widgets
 │   ├── assets/
-│   │   ├── js/                  # JavaScript files
-│   │   └── css/                 # Stylesheets
+│   │   ├── js/
+│   │   │   ├── gutenberg.js                 # Enhanced Gutenberg UI with recommendations
+│   │   │   └── admin.js                     # Admin interface
+│   │   └── css/                             # Stylesheets
 │   ├── culturata-brand-suitability.php
 │   └── README.md
 │
-└── README.md                     # This file
+└── README.md                                 # This file
 ```
 
 ### Running Tests

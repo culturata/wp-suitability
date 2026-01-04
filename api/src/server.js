@@ -12,6 +12,7 @@ const { checkRateLimit } = require('./middleware/rateLimiter');
 // Import routes
 const analysisRoutes = require('./routes/analysis');
 const userRoutes = require('./routes/user');
+const recommendationsRoutes = require('./routes/recommendations');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -88,6 +89,19 @@ app.use(
     }
   },
   userRoutes
+);
+
+app.use(
+  '/api/v1/recommendations',
+  (req, res, next) => {
+    // Check if using API key or Clerk token
+    if (req.headers['x-api-key']) {
+      return authenticateApiKey(req, res, next);
+    } else {
+      return authenticateClerk(req, res, next);
+    }
+  },
+  recommendationsRoutes
 );
 
 // 404 handler

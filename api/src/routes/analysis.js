@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { analyzeContent, getScoreSummary } = require('../services/claudeAnalyzer');
-const { Analysis } = require('../models');
+const { screenContent, getPreliminaryScore, needsAIAnalysis } = require('../services/keywordScreener');
+const { Analysis, RecommendationTracking } = require('../models');
 const { getRedisClient } = require('../config/redis');
 const crypto = require('crypto');
 
@@ -46,8 +47,70 @@ router.post('/analyze', async (req, res) => {
       }
     }
 
-    // Perform analysis
-    const analysisResult = await analyzeContent({ title, content, excerpt });
+    // Step 1: Keyword-based pre-screening
+    const keywordScreening = screenContent(title + ' ' + content + ' ' + excerpt);
+    const userTier = req.user.tier;
+
+    let analysisResult;
+    let analysisMethod = 'hybrid';
+
+    // Step 2: Determine analysis method based on tier
+    if (userTier === 'free' && !keywordScreening.flagged) {
+      // Free tier: keyword-only for clean content
+      analysisMethod = 'keyword_only';
+      analysisResult = {
+        contentHash,
+        overallScore: getPreliminaryScore(keywordScreening),
+        garmRiskLevel: keywordScreening.riskLevel,
+        garmCategories: keywordScreening.categories,
+        iabCategories: [],
+        sentimentScore: 0,
+        toxicityFlags: {
+          hateSpeech: keywordScreening.categories.hateSpeech?.detected || false,
+          violence: keywordScreening.categories.crimeHarmfulActs?.detected || false,
+          adultContent: keywordScreening.categories.adultContent?.detected || false,
+          profanity: keywordScreening.categories.obscenityProfanity?.detected || false,
+          controversial: keywordScreening.categories.debatedSocialIssues?.detected || false
+        },
+        riskFlags: [],
+        flaggedEntities: [],
+        recommendations: [],
+        reasoning: 'Keyword-based analysis (upgrade for AI-powered insights)',
+        processingTimeMs: 0,
+        modelVersion: 'keyword-screener-v1'
+      };
+    } else if (needsAIAnalysis(keywordScreening, userTier)) {
+      // Pro/Enterprise or flagged content: Full AI analysis
+      analysisMethod = 'hybrid';
+      analysisResult = await analyzeContent({ title, content, excerpt });
+
+      // Merge keyword screening with AI results
+      analysisResult.keywordFlags = keywordScreening;
+    } else {
+      // Keyword-only fallback
+      analysisMethod = 'keyword_only';
+      analysisResult = {
+        contentHash,
+        overallScore: getPreliminaryScore(keywordScreening),
+        garmRiskLevel: keywordScreening.riskLevel,
+        garmCategories: keywordScreening.categories,
+        iabCategories: [],
+        sentimentScore: 0,
+        toxicityFlags: {
+          hateSpeech: keywordScreening.categories.hateSpeech?.detected || false,
+          violence: keywordScreening.categories.crimeHarmfulActs?.detected || false,
+          adultContent: keywordScreening.categories.adultContent?.detected || false,
+          profanity: keywordScreening.categories.obscenityProfanity?.detected || false,
+          controversial: keywordScreening.categories.debatedSocialIssues?.detected || false
+        },
+        riskFlags: [],
+        flaggedEntities: [],
+        recommendations: [],
+        reasoning: 'Keyword-based analysis',
+        processingTimeMs: 0,
+        modelVersion: 'keyword-screener-v1'
+      };
+    }
 
     // Save to database
     const savedAnalysis = await Analysis.create({
@@ -57,14 +120,18 @@ router.post('/analyze', async (req, res) => {
       contentHash: analysisResult.contentHash,
       overallScore: analysisResult.overallScore,
       garmRiskLevel: analysisResult.garmRiskLevel,
+      garmCategories: analysisResult.garmCategories || {},
       iabCategories: analysisResult.iabCategories,
       sentimentScore: analysisResult.sentimentScore,
       toxicityFlags: analysisResult.toxicityFlags,
       riskFlags: analysisResult.riskFlags,
       flaggedEntities: analysisResult.flaggedEntities,
+      recommendations: analysisResult.recommendations || [],
+      keywordFlags: analysisResult.keywordFlags || {},
+      analysisMethod,
       modelVersion: analysisResult.modelVersion,
       processingTimeMs: analysisResult.processingTimeMs,
-      rawResponse: analysisResult.rawResponse
+      rawResponse: analysisResult.rawResponse || analysisResult
     });
 
     // Cache the result (24 hours)

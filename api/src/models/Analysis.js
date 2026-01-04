@@ -66,6 +66,13 @@ const Analysis = sequelize.define('Analysis', {
     defaultValue: {},
     field: 'toxicity_flags'
   },
+  garmCategories: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    defaultValue: {},
+    field: 'garm_categories',
+    comment: '12 GARM risk categories with detection status and confidence'
+  },
   flaggedEntities: {
     type: DataTypes.JSONB,
     allowNull: true,
@@ -77,6 +84,26 @@ const Analysis = sequelize.define('Analysis', {
     allowNull: true,
     defaultValue: [],
     field: 'risk_flags'
+  },
+  recommendations: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    defaultValue: [],
+    field: 'recommendations',
+    comment: 'Actionable recommendations for improving content'
+  },
+  keywordFlags: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    defaultValue: {},
+    field: 'keyword_flags',
+    comment: 'Keyword-based pre-screening flags'
+  },
+  analysisMethod: {
+    type: DataTypes.ENUM('keyword_only', 'ai_only', 'hybrid'),
+    allowNull: false,
+    defaultValue: 'hybrid',
+    field: 'analysis_method'
   },
   modelVersion: {
     type: DataTypes.STRING,

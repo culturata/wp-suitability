@@ -1,7 +1,7 @@
 (function (wp) {
     const { registerPlugin } = wp.plugins;
     const { PluginSidebar, PluginSidebarMoreMenuItem } = wp.editPost;
-    const { PanelBody, Button, Spinner, Notice, Tooltip, Icon } = wp.components;
+    const { PanelBody, Button, Spinner, Notice } = wp.components;
     const { Component, Fragment } = wp.element;
     const { withSelect, withDispatch } = wp.data;
     const { compose } = wp.compose;
@@ -14,9 +14,7 @@
                 isAnalyzing: false,
                 analysis: null,
                 error: null,
-                lastAnalyzedContent: null,
-                expandedCategories: false,
-                expandedRecommendations: true
+                lastAnalyzedContent: null
             };
         }
 
@@ -26,6 +24,7 @@
 
         loadExistingAnalysis = async () => {
             const { postId } = culturataBsGutenberg;
+
             if (!postId) return;
 
             try {
@@ -53,13 +52,21 @@
                 return;
             }
 
-            this.setState({ isAnalyzing: true, error: null });
+            this.setState({
+                isAnalyzing: true,
+                error: null
+            });
 
             try {
                 const response = await wp.apiFetch({
                     path: '/culturata-bs/v1/analyze',
                     method: 'POST',
-                    data: { title, content, excerpt, post_id: postId }
+                    data: {
+                        title,
+                        content,
+                        excerpt,
+                        post_id: postId
+                    }
                 });
 
                 if (response.success && response.data) {
@@ -80,41 +87,12 @@
             }
         };
 
-        applyRecommendation = async (recommendation, index) => {
-            const { editPost, content } = this.props;
-
-            // Replace the original text with suggested text
-            const newContent = content.replace(recommendation.original, recommendation.suggested);
-
-            // Update the post content
-            editPost({ content: newContent });
-
-            // Track the implementation
-            if (this.state.analysis && this.state.analysis.id) {
-                try {
-                    await wp.apiFetch({
-                        path: '/culturata-bs/v1/recommendations/track',
-                        method: 'POST',
-                        data: {
-                            analysisId: this.state.analysis.id,
-                            postId: culturataBsGutenberg.postId,
-                            recommendationIndex: index,
-                            originalText: recommendation.original,
-                            suggestedText: recommendation.suggested,
-                            implemented: true
-                        }
-                    });
-                } catch (error) {
-                    console.error('Failed to track recommendation:', error);
-                }
-            }
-        };
-
         renderScore() {
             const { analysis } = this.state;
+
             if (!analysis) return null;
 
-            const { overallScore, scoreSummary, garmRiskLevel, analysisMethod } = analysis;
+            const { overallScore, scoreSummary, garmRiskLevel } = analysis;
 
             return (
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -142,168 +120,13 @@
                     }}>
                         GARM: {garmRiskLevel}
                     </div>
-                    {analysisMethod === 'keyword_only' && (
-                        <div style={{
-                            fontSize: '11px',
-                            color: '#f59e0b',
-                            marginTop: '8px',
-                            padding: '4px 8px',
-                            background: '#fef3c7',
-                            borderRadius: '4px'
-                        }}>
-                            Keyword-based analysis (upgrade for AI insights)
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        renderGARMCategories() {
-            const { analysis, expandedCategories } = this.state;
-            if (!analysis || !analysis.garmCategories) return null;
-
-            const categories = Object.entries(analysis.garmCategories);
-            const detectedCategories = categories.filter(([_, cat]) => cat.detected);
-
-            if (detectedCategories.length === 0) {
-                return (
-                    <div style={{ marginTop: '15px' }}>
-                        <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#10b981' }}>
-                            ✓ {__('All GARM Categories Clear', 'culturata-brand-suitability')}
-                        </h4>
-                    </div>
-                );
-            }
-
-            return (
-                <div style={{ marginTop: '15px' }}>
-                    <h4
-                        style={{ margin: '0 0 10px 0', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
-                        onClick={() => this.setState({ expandedCategories: !expandedCategories })}
-                    >
-                        <span>{expandedCategories ? '▼' : '▶'}</span>
-                        {__('GARM Risk Categories', 'culturata-brand-suitability')} ({detectedCategories.length})
-                    </h4>
-                    {expandedCategories && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {detectedCategories.map(([key, category]) => (
-                                <div
-                                    key={key}
-                                    style={{
-                                        padding: '8px',
-                                        background: '#fee2e2',
-                                        borderLeft: `3px solid #ef4444`,
-                                        borderRadius: '2px',
-                                        fontSize: '12px'
-                                    }}
-                                >
-                                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                        {category.name || key}
-                                    </div>
-                                    <div style={{ color: '#666', fontSize: '11px' }}>
-                                        Confidence: {(category.confidence * 100).toFixed(0)}%
-                                    </div>
-                                    {category.details && (
-                                        <div style={{ color: '#666', fontSize: '11px', marginTop: '4px' }}>
-                                            {category.details}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        renderRecommendations() {
-            const { analysis, expandedRecommendations } = this.state;
-            if (!analysis || !analysis.recommendations || analysis.recommendations.length === 0) {
-                return null;
-            }
-
-            const priorityColors = {
-                high: '#ef4444',
-                medium: '#f59e0b',
-                low: '#3b82f6'
-            };
-
-            return (
-                <div style={{ marginTop: '15px' }}>
-                    <h4
-                        style={{ margin: '0 0 10px 0', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
-                        onClick={() => this.setState({ expandedRecommendations: !expandedRecommendations })}
-                    >
-                        <span>{expandedRecommendations ? '▼' : '▶'}</span>
-                        {__('Recommendations', 'culturata-brand-suitability')} ({analysis.recommendations.length})
-                    </h4>
-                    {expandedRecommendations && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {analysis.recommendations.map((rec, index) => (
-                                <div
-                                    key={index}
-                                    style={{
-                                        padding: '10px',
-                                        background: '#f9fafb',
-                                        border: '1px solid #e5e7eb',
-                                        borderLeft: `3px solid ${priorityColors[rec.priority] || '#999'}`,
-                                        borderRadius: '4px',
-                                        fontSize: '12px'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                        <span style={{ fontWeight: '600', color: priorityColors[rec.priority] || '#666' }}>
-                                            {rec.issue}
-                                        </span>
-                                        <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#999' }}>
-                                            {rec.priority}
-                                        </span>
-                                    </div>
-
-                                    {rec.location && (
-                                        <div style={{ color: '#666', fontSize: '11px', marginBottom: '4px' }}>
-                                            📍 {rec.location}
-                                        </div>
-                                    )}
-
-                                    <div style={{ marginTop: '8px', padding: '8px', background: '#fee2e2', borderRadius: '3px' }}>
-                                        <div style={{ fontSize: '10px', color: '#666', marginBottom: '3px' }}>Current:</div>
-                                        <div style={{ fontSize: '11px', color: '#991b1b', fontStyle: 'italic' }}>
-                                            "{rec.original}"
-                                        </div>
-                                    </div>
-
-                                    <div style={{ marginTop: '8px', padding: '8px', background: '#d1fae5', borderRadius: '3px' }}>
-                                        <div style={{ fontSize: '10px', color: '#666', marginBottom: '3px' }}>Suggested:</div>
-                                        <div style={{ fontSize: '11px', color: '#065f46' }}>
-                                            "{rec.suggested}"
-                                        </div>
-                                    </div>
-
-                                    {rec.reasoning && (
-                                        <div style={{ marginTop: '8px', fontSize: '11px', color: '#666', fontStyle: 'italic' }}>
-                                            💡 {rec.reasoning}
-                                        </div>
-                                    )}
-
-                                    <Button
-                                        isSecondary
-                                        isSmall
-                                        onClick={() => this.applyRecommendation(rec, index)}
-                                        style={{ marginTop: '8px', width: '100%' }}
-                                    >
-                                        {__('Apply Suggestion', 'culturata-brand-suitability')}
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
             );
         }
 
         renderRiskFlags() {
             const { analysis } = this.state;
+
             if (!analysis || !analysis.riskFlags || analysis.riskFlags.length === 0) {
                 return null;
             }
@@ -346,6 +169,7 @@
 
         renderIABCategories() {
             const { analysis } = this.state;
+
             if (!analysis || !analysis.iabCategories || analysis.iabCategories.length === 0) {
                 return null;
             }
@@ -398,8 +222,6 @@
                             )}
 
                             {analysis && this.renderScore()}
-                            {analysis && this.renderGARMCategories()}
-                            {analysis && this.renderRecommendations()}
                             {analysis && this.renderRiskFlags()}
                             {analysis && this.renderIABCategories()}
 
@@ -451,10 +273,6 @@
                 content: editor.getEditedPostAttribute('content'),
                 excerpt: editor.getEditedPostAttribute('excerpt')
             };
-        }),
-        withDispatch((dispatch) => {
-            const { editPost } = dispatch('core/editor');
-            return { editPost };
         })
     ])(BrandSuitabilityPanel);
 
