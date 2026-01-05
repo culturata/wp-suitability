@@ -2,6 +2,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 require('dotenv').config();
 
 const { syncDatabase } = require('./models');
@@ -18,7 +19,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow inline scripts for landing page
+}));
 
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -42,6 +45,9 @@ app.use(cors({
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Global rate limiter (prevent abuse)
 const globalLimiter = rateLimit({
@@ -125,8 +131,13 @@ app.use((err, req, res, next) => {
 // Start server
 async function startServer() {
   try {
-    // Initialize database
-    await syncDatabase();
+    // Initialize database (optional for landing page)
+    try {
+      await syncDatabase();
+    } catch (dbError) {
+      console.warn('⚠️  Database connection failed (API features disabled)');
+      console.warn('   Landing page will still be served');
+    }
 
     // Initialize Redis (optional)
     await initRedis();
@@ -135,9 +146,10 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`
 ┌─────────────────────────────────────────────────────┐
-│  Culturata Brand Suitability API                    │
+│  Culturata Brand Suitability Platform               │
 │  Server running on port ${PORT}                      │
 │  Environment: ${process.env.NODE_ENV || 'development'}                       │
+│  Landing page: http://localhost:${PORT}/             │
 │  Health check: http://localhost:${PORT}/health      │
 └─────────────────────────────────────────────────────┘
       `);
